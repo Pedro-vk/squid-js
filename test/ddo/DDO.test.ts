@@ -1,6 +1,5 @@
 import { assert, expect, spy, use } from "chai"
 import * as spies from "chai-spies"
-import * as Web3 from "web3"
 
 import { DDO } from "../../src/ddo/DDO"
 import { Service } from "../../src/ddo/Service"
@@ -154,13 +153,11 @@ describe("DDO", () => {
         ],
     })
 
-    let web3: Web3
     let ocean: Ocean
 
     beforeEach(async () => {
         await TestContractHandler.prepareContracts()
         ocean = await Ocean.getInstance(config)
-        web3 = (ocean as any).web3
     })
 
     afterEach(() => {
@@ -275,7 +272,7 @@ describe("DDO", () => {
             } as any
             const ddo = new DDO(testDDO)
             const generateProofSpy = spy.on(ddo, "generateProof", () => fakeProof)
-            await ddo.addProof(web3, publicKey)
+            await ddo.addProof(ocean, publicKey)
 
             assert.equal(ddo.proof, fakeProof)
             expect(generateProofSpy).to.have.been.called.with(publicKey)

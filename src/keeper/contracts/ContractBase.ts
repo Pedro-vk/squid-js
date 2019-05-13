@@ -44,7 +44,7 @@ export abstract class ContractBase extends Instantiable {
         return foundMethod.signature
     }
 
-    public getInputsOfMethod(methodName: string): any[] {
+    public getInputsOfMethod(methodName: string) {
         const foundMethod = this.searchMethod(methodName)
         return foundMethod.inputs
     }
@@ -75,21 +75,19 @@ export abstract class ContractBase extends Instantiable {
         const method = this.contract.methods[name]
         try {
             const methodInstance = method(...args)
-            const estimatedGas = await methodInstance.estimateGas(args, {
-                from,
-            })
+            const estimatedGas = await methodInstance.estimateGas({from})
             const tx = methodInstance.send({
                 from,
                 gas: estimatedGas,
             })
             return tx
         } catch (err) {
-            const mappedArgs = this.searchMethod(name, args).inputs.map((input, i) => {
-                return {
+            const mappedArgs = this.searchMethod(name, args)
+                .inputs
+                .map((input, i) => ({
                     name: input.name,
                     value: args[i],
-                }
-            })
+                }))
             this.logger.error("-".repeat(40))
             this.logger.error(`Sending transaction "${name}" on contract "${this.contractName}" failed.`)
             this.logger.error(`Error: ${err.message}`)
@@ -104,7 +102,6 @@ export abstract class ContractBase extends Instantiable {
         if (!this.contract.methods[name]) {
             throw new Error(`Method ${name} is not part of contract ${this.contractName}`)
         }
-        // Logger.log(name)
         try {
             const method = this.contract.methods[name](...args)
             return method.call(from ? {from} : null)
@@ -122,10 +119,14 @@ export abstract class ContractBase extends Instantiable {
     }
 
     private searchMethod(methodName: string, args: any[] = []) {
-        const methods = this.contract.options.jsonInterface
-            .map((method) => ({...method, signature: (method as any).signature}))
+        const methods = Object.values(this.contract.jsonInterface.getMethods())
+            .map((method) => ({
+                ...method,
+                signature: (method as any).signature,
+                inputs: (method as any).inputs || (method.getInputs && method.getInputs()) || [],
+            }))
             .filter((method: any) => method.name === methodName)
-        const foundMethod = methods.find(({inputs}) => inputs.length === args.length) || methods[0]
+        const foundMethod = methods.find(({inputs}: any) => inputs && inputs.length === args.length) || methods[0]
         if (!foundMethod) {
             throw new Error(`Method "${methodName}" is not part of contract "${this.contractName}"`)
         }

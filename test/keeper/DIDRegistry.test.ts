@@ -10,6 +10,7 @@ let ocean: Ocean
 let didRegistry: DIDRegistry
 
 describe("DIDRegistry", () => {
+    const checksum = `0x${"b".repeat(64)}`
 
     before(async () => {
         await TestContractHandler.prepareContracts()
@@ -23,7 +24,7 @@ describe("DIDRegistry", () => {
             const ownerAccount: Account = (await ocean.accounts.list())[0]
             const did = generateId()
             const data = "my nice provider, is nice"
-            const receipt = await didRegistry.registerAttribute(did, `0123456789abcdef`, [], data, ownerAccount.getId())
+            const receipt = await didRegistry.registerAttribute(did, checksum, [], data, ownerAccount.getId())
             assert(receipt.status)
             assert(receipt.events.DIDAttributeRegistered)
         })
@@ -34,12 +35,12 @@ describe("DIDRegistry", () => {
             {
                 // register the first attribute
                 const data = "my nice provider, is nice"
-                await didRegistry.registerAttribute(did, "0123456789abcdef", [], data, ownerAccount.getId())
+                await didRegistry.registerAttribute(did, checksum, [], data, ownerAccount.getId())
             }
             {
                 // register the second attribute with the same did
-                const data = "asdsad"
-                const receipt = await didRegistry.registerAttribute(did, "0123456789abcdef", [], data, ownerAccount.getId())
+                const data = "foo"
+                const receipt = await didRegistry.registerAttribute(did, checksum, [], data, ownerAccount.getId())
                 assert.isTrue(receipt.status)
                 assert.isDefined(receipt.events.DIDAttributeRegistered)
             }
@@ -52,7 +53,7 @@ describe("DIDRegistry", () => {
             const ownerAccount: Account = (await ocean.accounts.list())[0]
             const did = generateId()
             const data = "my nice provider, is nice"
-            await didRegistry.registerAttribute(did, "0123456789abcdef", [], data, ownerAccount.getId())
+            await didRegistry.registerAttribute(did, checksum, [], data, ownerAccount.getId())
 
             const owner = await didRegistry.getDIDOwner(did)
 
@@ -60,7 +61,7 @@ describe("DIDRegistry", () => {
         })
 
         it("should get 0x0 for a not registered did", async () => {
-            const owner = await didRegistry.getDIDOwner("1234")
+            const owner = await didRegistry.getDIDOwner(generateId())
             assert.equal(owner, `0x${"0".repeat(40)}`)
         })
     })

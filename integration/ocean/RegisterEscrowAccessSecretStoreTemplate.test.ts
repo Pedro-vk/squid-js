@@ -13,7 +13,7 @@ describe("Register Escrow Access Secret Store Template", () => {
     let template: templates.EscrowAccessSecretStoreTemplate
 
     const url = "https://example.com/did/ocean/test-attr-example.txt"
-    const checksum = "b".repeat(32)
+    const checksum = `0x${"b".repeat(64)}`
     const escrowAmount = 12
 
     let templateManagerOwner: Account

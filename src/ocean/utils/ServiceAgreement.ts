@@ -82,7 +82,7 @@ export class ServiceAgreement extends Instantiable {
             {type: "bytes32", value: zeroX(serviceAgreementId)},
         ]
 
-        return this.web3.utils.soliditySha3(...args).toString("hex")
+        return this.web3.utils.soliditySha3(...(args as any)).toString()
     }
 
     private getTimeValuesFromService(service: ServiceAccess, type: "timeout" | "timelock"): number[] {

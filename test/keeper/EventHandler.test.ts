@@ -17,7 +17,9 @@ describe("EventHandler", () => {
     })
 
     afterEach(() => {
-        spy.restore()
+        try {
+            spy.restore()
+        } catch { }
     })
 
     describe("#subscribe()", () => {
@@ -61,10 +63,18 @@ describe("EventHandler", () => {
 
     describe("#checkBlock()", () => {
         it("should call the callback on each new block", async () => {
+            // Spies cannot be used on new Web3 versions
+            const oceanWeb3EthBackup = (ocean as any).web3.eth
+
             let blockNumber = 100000000000
             const callbackSpy = spy()
 
-            spy.on((ocean as any).web3.eth, "getBlockNumber", () => blockNumber)
+            {
+                (ocean as any).web3.eth = {
+                    ...oceanWeb3EthBackup,
+                    getBlockNumber: () => blockNumber,
+                }
+            }
 
             const subscription = eventHandler.subscribe(callbackSpy)
 
@@ -78,6 +88,10 @@ describe("EventHandler", () => {
             expect(callbackSpy).to.has.been.called.with(blockNumber)
 
             subscription.unsubscribe()
+
+            {
+                (ocean as any).web3.eth = oceanWeb3EthBackup
+            }
         })
     })
 })

@@ -42,4 +42,9 @@ if (process.env.SEED_WORDS) {
     )
 }
 
-export const config: Config = configJson as any
+const configVerbose = {...configJson, verbose: true}
+{
+    (configJson as any).forceVerbose = configVerbose
+}
+
+export const config: Config & {forceVerbose: Config} = configJson as any
