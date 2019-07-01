@@ -1,0 +1,153 @@
+version: 2
+
+workflows:
+  version: 2
+  CI:
+    jobs:
+      - npm-install
+      - greenkeeper:
+          requires:
+            - npm-install
+      - test-unit:
+          requires:
+            - npm-install
+      - test-integration:
+          requires:
+            - npm-install
+      - lint:
+          requires:
+            - npm-install
+      - build:
+          requires:
+            - npm-install
+      - docs:
+          requires:
+            - npm-install
+      - report-coverage:
+          requires:
+            - test-unit
+            - test-integration
+
+node-defaults: &NODE
+  working_directory: ~/squid
+  docker:
+    - image: circleci/node:10
+
+checkout-workspace-defaults:
+  - &CHECKOUT-WORKSPACE
+    attach_workspace:
+      at: ~/squid
+
+jobs:
+  # NPM install
+  npm-install:
+    <<: *NODE
+    steps:
+      - checkout
+      # - restore_cache:
+      #     keys:
+      #     - squid-dependencies-{{ checksum "package.json" }}
+      #     - squid-dependencies-
+      - run: npm install
+      # - save_cache:
+      #     paths:
+      #       - node_modules
+      #     key: squid-dependencies-{{ checksum "package.json" }}
+      - persist_to_workspace:
+          root: .
+          paths:
+            - node_modules
+            - src/metadata.json
+  # Tests (unit)
+  test-unit:
+    <<: *NODE
+    steps:
+      - checkout
+      - *CHECKOUT-WORKSPACE
+      - run:
+          command: npx ganache-cli --port 18545 > ganache-cli.log
+          background: true
+      - run: export ETH_PORT=18545; npm run test:cover
+      - persist_to_workspace:
+          root: .
+          paths:
+            - coverage
+  # Tests (integration)
+  test-integration:
+    docker:
+      - image: circleci/golang:1.8.7-stretch
+    attach_workspace:
+      at: ~/barge
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Install Docker client
+          command: |
+            set -x
+            VER="18.06.0-ce"
+            curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
+            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+            sudo mv -f /tmp/docker/* /usr/bin
+      - run: git clone https://github.com/oceanprotocol/barge
+      - run:
+          name: Run Barge
+          background: true
+          command: |
+            cd barge
+            export AQUARIUS_VERSION=v0.3.4
+            export BRIZO_VERSION=v0.3.12
+            export KEEPER_VERSION=v0.10.3
+            export KEEPER_OWNER_ROLE_ADDRESS="0xe2DD09d719Da89e5a3D0F2549c7E24566e947260"
+            bash -x start_ocean.sh --no-pleuston --local-spree-node 2>&1 > start_ocean.log
+      - run:
+          name: Wait for Barge
+          command: ./scripts/wait_for_migration_and_extract_keeper_artifacts.sh
+      - run: npm run integration:cover
+      - persist_to_workspace:
+          root: .
+          paths:
+            - coverage
+  # Code quality
+  lint:
+    <<: *NODE
+    steps:
+      - checkout
+      - *CHECKOUT-WORKSPACE
+      - run: npm run lint
+  greenkeeper:
+    <<: *NODE
+    steps:
+      - checkout
+      - *CHECKOUT-WORKSPACE
+      - run: npx greenkeeper-lockfile-update
+  # Build
+  build:
+    <<: *NODE
+    steps:
+      - checkout
+      - *CHECKOUT-WORKSPACE
+      - run: npm run build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+  docs:
+    <<: *NODE
+    steps:
+      - checkout
+      - *CHECKOUT-WORKSPACE
+      - run: npm run doc
+      - persist_to_workspace:
+          root: .
+          paths:
+            - doc
+  # Reports
+  report-coverage:
+    <<: *NODE
+    steps:
+      - checkout
+      - *CHECKOUT-WORKSPACE
+      - run: npm run report-coverage
+
